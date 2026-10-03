@@ -1,0 +1,17 @@
+{
+  "name": "tongpin-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "同频：可在 Windows LAN 与 Linux VPS 上运行的 WebSocket 聊天室",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}

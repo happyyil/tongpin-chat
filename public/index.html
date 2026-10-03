@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f4f6fb">
+  <title>远程聊天 · 同频</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d2433;
+      --muted: #8991a3;
+      --line: #edf0f5;
+      --accent: #6658e8;
+      --accent-dark: #5143d0;
+      --surface: #fff;
+      --page: #f4f6fb;
+      --ok: #288565;
+      --warn: #a26b19;
+      --bad: #b42318;
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 12% 0%, #e9e7ff 0, transparent 34rem),
+        var(--page);
+      color: var(--ink);
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .shell {
+      width: min(1220px, calc(100% - 48px));
+      min-height: min(790px, calc(100vh - 64px));
+      margin: 32px auto;
+      display: grid;
+      grid-template-columns: 286px minmax(0, 1fr);
+      overflow: hidden;
+      border: 1px solid #e9ebf2;
+      border-radius: 24px;
+      background: var(--surface);
+      box-shadow: 0 24px 80px #2c315014;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      padding: 26px 18px 18px;
+      border-right: 1px solid var(--line);
+      background: #fdfdff;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 0 9px;
+      font-size: 18px;
+      font-weight: 750;
+      letter-spacing: -.5px;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border-radius: 13px;
+      background: linear-gradient(145deg, #796cf4, #5548d9);
+      color: white;
+      font-size: 20px;
+      box-shadow: 0 7px 16px #6558e83d;
+    }
+
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 22px 0 16px;
+      padding: 12px;
+      border: 1px solid #f0f1f7;
+      border-radius: 16px;
+      background: white;
+    }
+
+    .avatar {
+      display: grid;
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border-radius: 14px;
+      background: #e8e5ff;
+      color: #594bd4;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .avatar.mint { background: #dff5ed; color: #288565; }
+    .avatar.peach { background: #ffeadc; color: #bc7044; }
+    .avatar.blue { background: #e1edff; color: #4777bd; }
+    .avatar.pink { background: #fde5ef; color: #ba6286; }
+    .user-meta { min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 700; }
+    .user-status { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .online-dot {
+      width: 8px;
+      height: 8px;
+      margin-left: auto;
+      border-radius: 50%;
+      background: #d0d5dd;
+      box-shadow: 0 0 0 3px #f2f4f7;
+    }
+    .online-dot.on {
+      background: #50c99a;
+      box-shadow: 0 0 0 3px #e5f8f0;
+    }
+
+    .connect-form {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 18px;
+      padding: 4px 6px 0;
+    }
+    .connect-form label {
+      color: #a0a6b4;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .6px;
+    }
+    .connect-form input {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1px solid #e9ebf2;
+      border-radius: 11px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 12px;
+      outline: 0;
+    }
+    .connect-form input:focus { border-color: #b9b2fa; box-shadow: 0 0 0 3px #6658e814; }
+    .connect-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .primary, .ghost {
+      flex: 1;
+      padding: 9px 10px;
+      border-radius: 11px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .primary {
+      border: 0;
+      background: var(--accent);
+      color: white;
+    }
+    .primary:hover { background: var(--accent-dark); }
+    .primary:disabled { opacity: .55; cursor: not-allowed; }
+    .ghost {
+      border: 1px solid #e9ebf2;
+      background: #fff;
+      color: #5d6578;
+    }
+
+    .section-label {
+      padding: 0 10px;
+      color: #a0a6b4;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+    }
+
+    .contact-list { display: grid; gap: 5px; margin-top: 10px; flex: 1; overflow: auto; }
+    .contact {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      width: 100%;
+      padding: 11px 10px;
+      border: 0;
+      border-radius: 14px;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+    }
+    .contact.active { background: #f0efff; }
+    .contact .avatar { width: 38px; height: 38px; border-radius: 13px; }
+    .contact-detail { min-width: 0; flex: 1; }
+    .contact-name { font-size: 12px; font-weight: 700; }
+    .contact-preview {
+      overflow: hidden;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .empty-members {
+      padding: 12px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 14px 10px 4px;
+      color: #9ba2b1;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .main { display: flex; min-width: 0; flex-direction: column; }
+    .chat-header {
+      display: flex;
+      min-height: 82px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .chat-title { font-size: 16px; font-weight: 750; }
+    .chat-subtitle { margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 11px;
+      border: 1px solid #eee;
+      border-radius: 999px;
+      background: #f8f9fc;
+      color: #667085;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .status-badge::before {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #98a2b3;
+      content: "";
+    }
+    .status-badge.idle { border-color: #f3e4c8; background: #fff9ed; color: var(--warn); }
+    .status-badge.idle::before { background: #e7a634; }
+    .status-badge.ok { border-color: #c8eadc; background: #f1fbf6; color: var(--ok); }
+    .status-badge.ok::before { background: #32b27c; }
+    .status-badge.bad { border-color: #f5d0d0; background: #fff5f5; color: var(--bad); }
+    .status-badge.bad::before { background: #d92d20; }
+
+    .notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 18px 26px 0;
+      padding: 12px 14px;
+      border: 1px solid #e8e6ff;
+      border-radius: 13px;
+      background: #f8f7ff;
+      color: #625a9d;
+      font-size: 11px;
+      line-height: 1.65;
+    }
+    .notice.error {
+      border-color: #f5d0d0;
+      background: #fff7f7;
+      color: #9b1c1c;
+    }
+    .notice-icon { font-size: 15px; }
+
+    .messages {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+      padding: 24px 28px;
+    }
+
+    .day-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #a2a8b5;
+      font-size: 10px;
+    }
+    .day-divider::before, .day-divider::after {
+      height: 1px;
+      flex: 1;
+      background: var(--line);
+      content: "";
+    }
+
+    .message-row { display: flex; align-items: flex-end; gap: 9px; }
+    .message-row.mine { justify-content: flex-end; }
+    .message-row .avatar { width: 30px; height: 30px; border-radius: 11px; font-size: 11px; }
+    .message-content { max-width: min(72%, 440px); }
+    .message-author { margin: 0 0 6px 3px; color: #858da0; font-size: 10px; }
+    .bubble {
+      padding: 11px 14px;
+      border: 1px solid #edf0f5;
+      border-radius: 5px 16px 16px;
+      background: #f6f7fb;
+      color: #343b4c;
+      font-size: 12px;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
+    }
+    .mine .bubble {
+      border-color: transparent;
+      border-radius: 16px 5px 16px 16px;
+      background: var(--accent);
+      color: white;
+    }
+    .message-time { margin: 5px 3px 0; color: #a2a8b5; font-size: 9px; }
+    .mine .message-time { text-align: right; }
+
+    .composer-wrap { padding: 0 26px 22px; }
+    .composer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px 9px 16px;
+      border: 1px solid #e9ebf2;
+      border-radius: 17px;
+      background: #fff;
+      box-shadow: 0 5px 20px #2c315009;
+    }
+    .composer:focus-within { border-color: #b9b2fa; box-shadow: 0 0 0 3px #6658e814; }
+    .composer input {
+      min-width: 0;
+      flex: 1;
+      padding: 8px 0;
+      border: 0;
+      outline: 0;
+      color: var(--ink);
+      font-size: 12px;
+    }
+    .composer input::placeholder { color: #a5abba; }
+    .composer input:disabled { background: transparent; }
+    .send-button {
+      display: grid;
+      width: 39px;
+      height: 39px;
+      place-items: center;
+      border: 0;
+      border-radius: 13px;
+      background: var(--accent);
+      color: white;
+      transition: background .15s, transform .15s;
+    }
+    .send-button:hover:not(:disabled) { transform: translateY(-1px); background: var(--accent-dark); }
+    .send-button:disabled { opacity: .45; cursor: not-allowed; }
+    .send-button svg { width: 17px; height: 17px; }
+    .composer-hint { margin: 8px 4px 0; color: #a1a7b4; font-size: 9px; }
+
+    .resources {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 0 26px 22px;
+    }
+    .resource {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      color: inherit;
+      text-decoration: none;
+      transition: border-color .15s, transform .15s;
+    }
+    .resource:hover { transform: translateY(-1px); border-color: #c9c4fb; }
+    .resource-icon {
+      display: grid;
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 11px;
+      background: #f0efff;
+      color: #5e51db;
+      font-size: 15px;
+    }
+    .resource-copy { min-width: 0; }
+    .resource-title { font-size: 11px; font-weight: 700; }
+    .resource-description {
+      overflow: hidden;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 9px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .resource-arrow { margin-left: auto; color: #9da3b0; font-size: 15px; }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: 100%;
+        min-height: 100vh;
+        margin: 0;
+        grid-template-columns: 1fr;
+        border: 0;
+        border-radius: 0;
+      }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+      .chat-header { min-height: 72px; padding: 14px 17px; }
+      .notice { margin: 14px 14px 0; }
+      .messages { padding: 20px 15px; }
+      .composer-wrap { padding: 0 14px 15px; }
+      .resources { grid-template-columns: 1fr; margin: 0 14px 15px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <aside class="sidebar" aria-label="连接与成员">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">⌁</span>
+        <span class="brand-name">同频</span>
+      </div>
+
+      <div class="user-card">
+        <div class="avatar" id="me-avatar">我</div>
+        <div class="user-meta">
+          <div class="user-name" id="me-name">未加入</div>
+          <div class="user-status" id="me-status">尚未连接服务器</div>
+        </div>
+        <span class="online-dot" id="me-dot" aria-hidden="true"></span>
+      </div>
+
+      <form class="connect-form" id="connect-form">
+        <label for="server-url">服务器</label>
+        <input id="server-url" name="server" autocomplete="off" spellcheck="false" placeholder="ws://127.0.0.1:8787/ws">
+        <label for="nickname">昵称</label>
+        <input id="nickname" name="nickname" maxlength="24" autocomplete="nickname" placeholder="你的名字">
+        <label for="room">房间</label>
+        <input id="room" name="room" maxlength="32" autocomplete="off" placeholder="大厅">
+        <label for="password">房间口令（可空）</label>
+        <input id="password" name="password" type="password" maxlength="64" autocomplete="current-password" placeholder="服务端未设置则可留空">
+        <div class="connect-actions">
+          <button class="primary" id="connect-btn" type="submit">连接</button>
+          <button class="ghost" id="disconnect-btn" type="button">断开</button>
+        </div>
+      </form>
+
+      <div class="section-label">房间成员</div>
+      <div class="contact-list" id="member-list"></div>
+      <div class="sidebar-bottom">同一套网页可连 LAN 实例或云端实例。<br>未连接时发送不会成功。</div>
+    </aside>
+
+    <section class="main" aria-label="聊天窗口">
+      <header class="chat-header">
+        <div>
+          <div class="chat-title" id="chat-title">未加入房间</div>
+          <div class="chat-subtitle" id="chat-subtitle">填写左侧信息后连接</div>
+        </div>
+        <span class="status-badge idle" id="status-badge">未连接</span>
+      </header>
+
+      <div class="notice" id="notice" role="status">
+        <span class="notice-icon" aria-hidden="true">ⓘ</span>
+        <span id="notice-text">先连接聊天服务。消息只会在已加入的同一房间、同一服务器实例里实时同步。</span>
+      </div>
+
+      <div class="messages" id="messages" aria-live="polite" aria-label="消息记录"></div>
+
+      <div class="composer-wrap">
+        <form class="composer" id="chat-form">
+          <input id="message-input" type="text" maxlength="2000" autocomplete="off" placeholder="连接服务器后再发送…" aria-label="输入消息" disabled>
+          <button class="send-button" id="send-button" type="submit" aria-label="发送消息" disabled>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M21 3 10.8 13.2M21 3l-6.5 18-3.7-7.8L3 9.5 21 3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </form>
+        <div class="composer-hint" id="composer-hint">Enter 发送 · 未连接时不会显示发送成功</div>
+      </div>
+
+      <div class="resources" aria-label="相关工具">
+        <a class="resource" href="https://www.radmin-vpn.com/" target="_blank" rel="noopener noreferrer">
+          <span class="resource-icon" aria-hidden="true">⌘</span>
+          <span class="resource-copy">
+            <span class="resource-title">Radmin VPN ↗</span>
+            <span class="resource-description">Windows 虚拟局域网通道</span>
+          </span>
+          <span class="resource-arrow" aria-hidden="true">›</span>
+        </a>
+        <a class="resource" href="https://www.wireguard.com/install/" target="_blank" rel="noopener noreferrer">
+          <span class="resource-icon" aria-hidden="true">◉</span>
+          <span class="resource-copy">
+            <span class="resource-title">WireGuard ↗</span>
+            <span class="resource-description">可选的跨平台私有隧道</span>
+          </span>
+          <span class="resource-arrow" aria-hidden="true">›</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "tongpin.settings";
+    const PALETTES = ["mint", "peach", "blue", "pink", ""];
+
+    const els = {
+      server: document.querySelector("#server-url"),
+      nickname: document.querySelector("#nickname"),
+      room: document.querySelector("#room"),
+      password: document.querySelector("#password"),
+      connectForm: document.querySelector("#connect-form"),
+      connectBtn: document.querySelector("#connect-btn"),
+      disconnectBtn: document.querySelector("#disconnect-btn"),
+      chatForm: document.querySelector("#chat-form"),
+      input: document.querySelector("#message-input"),
+      sendButton: document.querySelector("#send-button"),
+      messages: document.querySelector("#messages"),
+      members: document.querySelector("#member-list"),
+      notice: document.querySelector("#notice"),
+      noticeText: document.querySelector("#notice-text"),
+      badge: document.querySelector("#status-badge"),
+      title: document.querySelector("#chat-title"),
+      subtitle: document.querySelector("#chat-subtitle"),
+      hint: document.querySelector("#composer-hint"),
+      meName: document.querySelector("#me-name"),
+      meStatus: document.querySelector("#me-status"),
+      meAvatar: document.querySelector("#me-avatar"),
+      meDot: document.querySelector("#me-dot")
+    };
+
+    const state = {
+      ws: null,
+      userId: "",
+      nickname: "",
+      room: "",
+      joined: false,
+      pending: new Map()
+    };
+
+    restoreSettings();
+    renderMembers([]);
+    renderEmptyMessages("还没有消息。连接后会显示该房间的历史记录。");
+    setStatus("idle", "未连接");
+
+    els.connectForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      connect();
+    });
+    els.disconnectBtn.addEventListener("click", () => disconnect("已断开连接。"));
+    els.chatForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      sendMessage();
+    });
+
+    function defaultWsUrl() {
+      const proto = location.protocol === "https:" ? "wss:" : "ws:";
+      return `${proto}//${location.host}/ws`;
+    }
+
+    function restoreSettings() {
+      els.server.value = defaultWsUrl();
+      els.room.value = "大厅";
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        if (saved.server) els.server.value = saved.server;
+        if (saved.nickname) els.nickname.value = saved.nickname;
+        if (saved.room) els.room.value = saved.room;
+      } catch {}
+    }
+
+    function saveSettings() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        server: els.server.value.trim(),
+        nickname: els.nickname.value.trim(),
+        room: els.room.value.trim()
+      }));
+    }
+
+    function connect() {
+      const url = els.server.value.trim();
+      const nickname = els.nickname.value.trim();
+      const room = els.room.value.trim();
+      if (!url) return showError("请填写 WebSocket 地址，例如 ws://192.168.x.x:8787/ws");
+      if (!nickname) return showError("请填写昵称。");
+      if (!room) return showError("请填写房间名。");
+
+      saveSettings();
+      disconnect();
+      setStatus("idle", "正在连接…");
+      els.connectBtn.disabled = true;
+      showNotice("正在连接服务器…");
+
+      let ws;
+      try {
+        ws = new WebSocket(url);
+      } catch {
+        els.connectBtn.disabled = false;
+        setStatus("bad", "地址无效");
+        showError("WebSocket 地址无效。");
+        return;
+      }
+
+      state.ws = ws;
+      ws.addEventListener("open", () => {
+        request("hello", {
+          nickname,
+          room,
+          password: els.password.value
+        });
+      });
+      ws.addEventListener("message", (event) => {
+        let envelope;
+        try { envelope = JSON.parse(event.data); }
+        catch {
+          showError("收到无法解析的服务器消息。");
+          return;
+        }
+        onEnvelope(envelope);
+      });
+      ws.addEventListener("close", () => {
+        const wasJoined = state.joined;
+        resetSession();
+        els.connectBtn.disabled = false;
+        setComposer(false);
+        renderMembers([]);
+        setStatus("bad", "已断开");
+        if (wasJoined) showError("与服务器的连接已断开。消息不会继续同步。");
+      });
+      ws.addEventListener("error", () => {
+        setStatus("bad", "连接失败");
+        showError("无法连接服务器。确认服务已启动，地址正确，且双方在同一网络（例如同一 Radmin VPN）。");
+      });
+    }
+
+    function disconnect(message) {
+      if (state.ws) {
+        state.ws.onclose = null;
+        state.ws.close();
+      }
+      resetSession();
+      els.connectBtn.disabled = false;
+      setComposer(false);
+      renderMembers([]);
+      setStatus("idle", "未连接");
+      if (message) showNotice(message);
+    }
+
+    function resetSession() {
+      state.ws = null;
+      state.userId = "";
+      state.nickname = "";
+      state.room = "";
+      state.joined = false;
+      state.pending.clear();
+      els.meName.textContent = "未加入";
+      els.meStatus.textContent = "尚未连接服务器";
+      els.meDot.classList.remove("on");
+      els.title.textContent = "未加入房间";
+      els.subtitle.textContent = "填写左侧信息后连接";
+    }
+
+    function sendMessage() {
+      const text = els.input.value.trim();
+      if (!text) return;
+      if (!state.joined || !state.ws || state.ws.readyState !== WebSocket.OPEN) {
+        showError("尚未连接服务器，消息未发送。");
+        return;
+      }
+      request("send", { text });
+      els.input.value = "";
+      els.input.focus();
+    }
+
+    function request(type, payload) {
+      const id = crypto.randomUUID();
+      state.pending.set(id, type);
+      state.ws.send(JSON.stringify({ v: 1, type, id, payload }));
+    }
+
+    function onEnvelope(envelope) {
+      if (!envelope || envelope.v !== 1) return;
+      if (envelope.id) state.pending.delete(envelope.id);
+
+      if (envelope.type === "hello_ok") {
+        const { userId, nickname, room, members, history } = envelope.payload;
+        state.userId = userId;
+        state.nickname = nickname;
+        state.room = room;
+        state.joined = true;
+        els.connectBtn.disabled = false;
+        els.meName.textContent = nickname;
+        els.meAvatar.textContent = initial(nickname);
+        els.meStatus.textContent = `房间 ${room}`;
+        els.meDot.classList.add("on");
+        els.title.textContent = room;
+        els.subtitle.textContent = "同一房间的成员会实时收到消息";
+        setStatus("ok", "已连接");
+        setComposer(true);
+        showNotice(`已加入「${room}」。此实例的消息不会自动同步到其他服务器。`);
+        els.messages.replaceChildren();
+        if (!history?.length) renderEmptyMessages("房间还是空的，发一条打个招呼吧。");
+        else history.forEach(appendMessage);
+        renderMembers(members || []);
+        els.input.focus();
+        return;
+      }
+
+      if (envelope.type === "message") {
+        const empty = els.messages.querySelector(".day-divider");
+        if (empty && els.messages.children.length === 1) els.messages.replaceChildren();
+        appendMessage(envelope.payload);
+        return;
+      }
+
+      if (envelope.type === "presence") {
+        renderMembers(envelope.payload.members || []);
+        return;
+      }
+
+      if (envelope.type === "error") {
+        const message = envelope.payload?.message || "服务器返回错误。";
+        showError(message);
+        if (!state.joined) {
+          els.connectBtn.disabled = false;
+          setStatus("bad", "加入失败");
+          state.ws?.close();
+        }
+      }
+    }
+
+    function appendMessage(message) {
+      const mine = message.userId === state.userId;
+      const row = document.createElement("div");
+      row.className = "message-row" + (mine ? " mine" : "");
+
+      const avatar = document.createElement("span");
+      avatar.className = "avatar " + palette(message.nickname);
+      avatar.setAttribute("aria-hidden", "true");
+      avatar.textContent = initial(message.nickname);
+
+      const content = document.createElement("div");
+      content.className = "message-content";
+      if (!mine) {
+        const author = document.createElement("div");
+        author.className = "message-author";
+        author.textContent = message.nickname;
+        content.append(author);
+      }
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = message.text;
+      const time = document.createElement("div");
+      time.className = "message-time";
+      time.textContent = formatTime(message.ts);
+      content.append(bubble, time);
+
+      if (mine) row.append(content, avatar);
+      else row.append(avatar, content);
+      els.messages.append(row);
+      els.messages.scrollTop = els.messages.scrollHeight;
+    }
+
+    function renderMembers(members) {
+      els.members.replaceChildren();
+      if (!members.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty-members";
+        empty.textContent = state.joined ? "暂时只有你在房间里。" : "连接后显示在线成员。";
+        els.members.append(empty);
+        return;
+      }
+      for (const member of members) {
+        const button = document.createElement("div");
+        button.className = "contact" + (member.userId === state.userId ? " active" : "");
+        const avatar = document.createElement("span");
+        avatar.className = "avatar " + palette(member.nickname);
+        avatar.textContent = initial(member.nickname);
+        const detail = document.createElement("span");
+        detail.className = "contact-detail";
+        const name = document.createElement("span");
+        name.className = "contact-name";
+        name.textContent = member.nickname + (member.userId === state.userId ? "（我）" : "");
+        const preview = document.createElement("span");
+        preview.className = "contact-preview";
+        preview.textContent = "在线";
+        detail.append(name, preview);
+        button.append(avatar, detail);
+        els.members.append(button);
+      }
+    }
+
+    function renderEmptyMessages(text) {
+      els.messages.replaceChildren();
+      const divider = document.createElement("div");
+      divider.className = "day-divider";
+      divider.textContent = text;
+      els.messages.append(divider);
+    }
+
+    function setComposer(enabled) {
+      els.input.disabled = !enabled;
+      els.sendButton.disabled = !enabled;
+      els.input.placeholder = enabled ? "输入一条消息…" : "连接服务器后再发送…";
+      els.hint.textContent = enabled
+        ? "Enter 发送 · 消息会广播到同一房间的其他连接"
+        : "Enter 发送 · 未连接时不会显示发送成功";
+    }
+
+    function setStatus(kind, text) {
+      els.badge.className = "status-badge " + kind;
+      els.badge.textContent = text;
+    }
+
+    function showNotice(text) {
+      els.notice.className = "notice";
+      els.noticeText.textContent = text;
+    }
+
+    function showError(text) {
+      els.notice.className = "notice error";
+      els.noticeText.textContent = text;
+    }
+
+    function initial(name) {
+      return (name || "?").trim().slice(0, 1).toUpperCase();
+    }
+
+    function palette(name) {
+      let hash = 0;
+      for (const ch of name || "") hash = (hash + ch.charCodeAt(0)) % PALETTES.length;
+      return PALETTES[hash];
+    }
+
+    function formatTime(ts) {
+      return new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date(ts));
+    }
+  </script>
+</body>
+</html>
